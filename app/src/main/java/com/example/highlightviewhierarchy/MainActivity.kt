@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,23 +55,26 @@ private fun Legend(modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
-        Swatch(label = "Source", color = Color(0x66E91E63))
-        Swatch(label = "Ancestors", color = Color(0x66FFC107))
-        Swatch(label = "Descendants", color = Color(0x6603A9F4))
+        Swatch(label = "Source", color = Color(0x66E91E63), filled = true)
+        Swatch(label = "Ancestors", color = Color(0xFFFFC107), filled = false)
+        Swatch(label = "Descendants", color = Color(0xFF03A9F4), filled = false)
     }
 }
 
 @Composable
-private fun Swatch(label: String, color: Color) {
+private fun Swatch(label: String, color: Color, filled: Boolean) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val shape = RoundedCornerShape(3.dp)
+        val base = Modifier.size(14.dp).clip(shape)
         Box(
-            modifier = Modifier
-                .size(12.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(color),
+            modifier = if (filled) {
+                base.background(color)
+            } else {
+                base.border(width = 2.dp, color = color, shape = shape)
+            },
         )
         Text(text = label, style = MaterialTheme.typography.labelSmall)
     }

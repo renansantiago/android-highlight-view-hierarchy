@@ -7,6 +7,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.SuspendingPointerInputModifierNode
 import androidx.compose.ui.node.DelegatingNode
 import androidx.compose.ui.node.DrawModifierNode
@@ -34,8 +36,8 @@ internal enum class HighlightRole { None, Source, Ancestor, Descendant }
  */
 fun Modifier.parentChainHighlighter(
     sourceColor: Color = Color(0x66E91E63),
-    ancestorColor: Color = Color(0x66FFC107),
-    descendantColor: Color = Color(0x6603A9F4),
+    ancestorColor: Color = Color(0xFFFFC107),
+    descendantColor: Color = Color(0xFF03A9F4),
 ): Modifier = this then ParentChainHighlighterElement(
     sourceColor = sourceColor,
     ancestorColor = ancestorColor,
@@ -49,8 +51,8 @@ internal fun Modifier.parentChainHighlighterForTest(
     debugTag: String,
     onRoleChange: (String, HighlightRole) -> Unit,
     sourceColor: Color = Color(0x66E91E63),
-    ancestorColor: Color = Color(0x66FFC107),
-    descendantColor: Color = Color(0x6603A9F4),
+    ancestorColor: Color = Color(0xFFFFC107),
+    descendantColor: Color = Color(0xFF03A9F4),
 ): Modifier = this then ParentChainHighlighterElement(
     sourceColor = sourceColor,
     ancestorColor = ancestorColor,
@@ -154,8 +156,19 @@ private class ParentChainHighlighterNode(
         when (role) {
             HighlightRole.None -> Unit
             HighlightRole.Source -> drawRect(sourceColor)
-            HighlightRole.Ancestor -> drawRect(ancestorColor)
-            HighlightRole.Descendant -> drawRect(descendantColor)
+            // Stroked so an ancestor's overlay doesn't paint over its descendants.
+            HighlightRole.Ancestor -> drawRect(
+                color = ancestorColor,
+                style = Stroke(width = STROKE_WIDTH.toPx()),
+            )
+            HighlightRole.Descendant -> drawRect(
+                color = descendantColor,
+                style = Stroke(width = STROKE_WIDTH.toPx()),
+            )
         }
+    }
+
+    private companion object {
+        val STROKE_WIDTH = 3.dp
     }
 }
