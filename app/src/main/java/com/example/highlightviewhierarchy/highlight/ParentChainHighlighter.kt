@@ -11,14 +11,17 @@ import androidx.compose.ui.input.pointer.SuspendingPointerInputModifierNode
 import androidx.compose.ui.node.DelegatingNode
 import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.SemanticsModifierNode
 import androidx.compose.ui.node.TraversableNode
 import androidx.compose.ui.node.TraversableNode.Companion.TraverseDescendantsAction
 import androidx.compose.ui.node.traverseAncestors
 import androidx.compose.ui.node.traverseDescendants
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
+import androidx.compose.ui.semantics.onClick
 
 private object HighlighterTraverseKey
 
-private enum class HighlightRole { None, Source, Ancestor, Descendant }
+internal enum class HighlightRole { None, Source, Ancestor, Descendant }
 
 /**
  * Tap any composable that uses this modifier and the tapped node lights up in [sourceColor],
@@ -33,20 +36,51 @@ fun Modifier.parentChainHighlighter(
     sourceColor: Color = Color(0x66E91E63),
     ancestorColor: Color = Color(0x66FFC107),
     descendantColor: Color = Color(0x6603A9F4),
-): Modifier = this then ParentChainHighlighterElement(sourceColor, ancestorColor, descendantColor)
+): Modifier = this then ParentChainHighlighterElement(
+    sourceColor = sourceColor,
+    ancestorColor = ancestorColor,
+    descendantColor = descendantColor,
+    debugTag = null,
+    onRoleChange = null,
+)
+
+/** Test hook. Fires [onRoleChange]([debugTag], newRole) whenever this node's role changes. */
+internal fun Modifier.parentChainHighlighterForTest(
+    debugTag: String,
+    onRoleChange: (String, HighlightRole) -> Unit,
+    sourceColor: Color = Color(0x66E91E63),
+    ancestorColor: Color = Color(0x66FFC107),
+    descendantColor: Color = Color(0x6603A9F4),
+): Modifier = this then ParentChainHighlighterElement(
+    sourceColor = sourceColor,
+    ancestorColor = ancestorColor,
+    descendantColor = descendantColor,
+    debugTag = debugTag,
+    onRoleChange = onRoleChange,
+)
 
 private data class ParentChainHighlighterElement(
     val sourceColor: Color,
     val ancestorColor: Color,
     val descendantColor: Color,
+    val debugTag: String?,
+    val onRoleChange: ((String, HighlightRole) -> Unit)?,
 ) : ModifierNodeElement<ParentChainHighlighterNode>() {
 
-    override fun create() = ParentChainHighlighterNode(sourceColor, ancestorColor, descendantColor)
+    override fun create() = ParentChainHighlighterNode(
+        sourceColor = sourceColor,
+        ancestorColor = ancestorColor,
+        descendantColor = descendantColor,
+        debugTag = debugTag,
+        onRoleChange = onRoleChange,
+    )
 
     override fun update(node: ParentChainHighlighterNode) {
         node.sourceColor = sourceColor
         node.ancestorColor = ancestorColor
         node.descendantColor = descendantColor
+        node.debugTag = debugTag
+        node.onRoleChange = onRoleChange
     }
 }
 
@@ -54,7 +88,9 @@ private class ParentChainHighlighterNode(
     var sourceColor: Color,
     var ancestorColor: Color,
     var descendantColor: Color,
-) : DelegatingNode(), DrawModifierNode, TraversableNode {
+    var debugTag: String?,
+    var onRoleChange: ((String, HighlightRole) -> Unit)?,
+) : DelegatingNode(), DrawModifierNode, TraversableNode, SemanticsModifierNode {
 
     override val traverseKey: Any = HighlighterTraverseKey
 
@@ -67,19 +103,27 @@ private class ParentChainHighlighterNode(
         })
     }
 
+    override fun SemanticsPropertyReceiver.applySemantics() {
+        // No Role.Button: noisy at every level.
+        onClick {
+            onTap()
+            true
+        }
+    }
+
     private fun onTap() {
         val wasSource = role == HighlightRole.Source
         // Clear any prior chain anywhere in the tree first, handles both the toggle case
         // and the case where a different subtree was previously highlighted.
         clearChainFromTop()
         if (wasSource) return
-        role = HighlightRole.Source
+        assignRole(HighlightRole.Source)
         traverseAncestors(HighlighterTraverseKey) { node ->
-            (node as ParentChainHighlighterNode).role = HighlightRole.Ancestor
+            (node as ParentChainHighlighterNode).assignRole(HighlightRole.Ancestor)
             true
         }
         traverseDescendants(HighlighterTraverseKey) { node ->
-            (node as ParentChainHighlighterNode).role = HighlightRole.Descendant
+            (node as ParentChainHighlighterNode).assignRole(HighlightRole.Descendant)
             TraverseDescendantsAction.ContinueTraversal
         }
     }
@@ -90,11 +134,19 @@ private class ParentChainHighlighterNode(
             top = node as ParentChainHighlighterNode
             true
         }
-        top.role = HighlightRole.None
+        top.assignRole(HighlightRole.None)
         top.traverseDescendants(HighlighterTraverseKey) { node ->
-            (node as ParentChainHighlighterNode).role = HighlightRole.None
+            (node as ParentChainHighlighterNode).assignRole(HighlightRole.None)
             TraverseDescendantsAction.ContinueTraversal
         }
+    }
+
+    private fun assignRole(newRole: HighlightRole) {
+        if (role == newRole) return
+        role = newRole
+        val tag = debugTag
+        val cb = onRoleChange
+        if (tag != null && cb != null) cb(tag, newRole)
     }
 
     override fun ContentDrawScope.draw() {

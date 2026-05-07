@@ -12,12 +12,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.highlightviewhierarchy.highlight.parentChainHighlighter
@@ -30,10 +35,44 @@ class MainActivity : ComponentActivity() {
         setContent {
             HighlightViewHierarchyTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    DemoTree(modifier = Modifier.padding(innerPadding))
+                    Column(modifier = Modifier.padding(innerPadding)) {
+                        Legend()
+                        DemoTree()
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun Legend(modifier: Modifier = Modifier) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Swatch(label = "Source", color = Color(0x66E91E63))
+        Swatch(label = "Ancestors", color = Color(0x66FFC107))
+        Swatch(label = "Descendants", color = Color(0x6603A9F4))
+    }
+}
+
+@Composable
+private fun Swatch(label: String, color: Color) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(color),
+        )
+        Text(text = label, style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -123,6 +162,9 @@ private fun DemoTree(modifier: Modifier = Modifier) {
 @Composable
 private fun DemoTreePreview() {
     HighlightViewHierarchyTheme {
-        DemoTree()
+        Column {
+            Legend()
+            DemoTree()
+        }
     }
 }
