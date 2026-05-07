@@ -27,6 +27,8 @@ Root Box
 
 The legend at the top of the screen maps colours to roles: pink = the tapped node (Source), amber = ancestors, cyan = descendants.
 
+![Parent chain highlighter demo](demo/highlight-demo.gif)
+
 ## Running it
 
 ```bash
